@@ -4,8 +4,28 @@ import sublime
 import sublime_plugin
 from subprocess import PIPE, Popen
 
-# TODO: move to settings
-BIN_PATH = "$HOME/.bun/bin"
+def get_setting(view, key, default_value=None):
+    plugin_name = "YarnLock Syntax Highlighting"
+    settings_filename = '{0}.sublime-settings'.format(plugin_name)
+
+    settings = view.settings().get(plugin_name)
+    if settings is None or settings.get(key) is None:
+        settings = sublime.load_settings(settings_filename)
+
+    value = settings.get(key, default_value)
+
+    return value
+
+def expand_var(window, var_to_expand):
+    if var_to_expand:
+        expanded = os.path.expanduser(var_to_expand)
+        expanded = os.path.expandvars(expanded)
+        if window:
+            window_variables = window.extract_variables()
+            expanded = sublime.expand_variables(expanded, window_variables)
+        return expanded
+
+    return var_to_expand
 
 class BunPreviewLockbCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -17,12 +37,15 @@ class BunPreviewLockbCommand(sublime_plugin.TextCommand):
         if filename.endswith(".lockb"):
             region = sublime.Region(0, self.view.size())
             
-            command = ["sh", "-c", "./%s" % filename]
+            command = ["./%s" % filename]
+
+            bun_path = expand_var(self.view.window(), get_setting(self.view, "bun_path"))
+
+            print(bun_path)
 
             env = os.environ
-            env_path = BIN_PATH.replace("$HOME", env["HOME"])
-            if env_path not in env["PATH"]:
-                env["PATH"] = env_path + ":" + env["PATH"]
+            if bun_path + ":" not in env["PATH"]:
+                env["PATH"] = bun_path + ":" + env["PATH"]
 
             with Popen(command, cwd=dirname, stdout=PIPE, stderr=PIPE, shell=False, env=env) as process:
                 res = process.communicate()
