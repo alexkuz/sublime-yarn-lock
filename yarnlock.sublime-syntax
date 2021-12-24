@@ -1,0 +1,71 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: Yarn Lock
+scope: text.yarnlock
+file_extensions:
+  - yarn.lock
+contexts:
+  main:
+    - include: comments
+    - include: section
+    # - include: integrity-hashes
+    # - include: package-version
+    # - include: keywords
+  comments:
+    - match: "^\\s*(#).*$"
+      scope: comment.line
+      captures:
+        1: punctuation.definition.comment
+
+  section:
+    - match: "^(\\S(,)?\\s*)+(:)$"
+      scope: entity.name.section
+      captures:
+        2: punctuation.separator
+        3: punctuation.separator
+      push:
+          - meta_content_scope: punctuation.definition.block
+          - match: ^\s*(version|resolved)
+            scope: entity.name.tag
+          - match: ^\s*(integrity)\s+(.*)$
+            captures:
+              1: entity.name.tag
+              2: string
+          - include: deps
+          - match: ^\s*$
+            pop: true
+          - include: strings
+
+  deps:
+    - match: "(dependencies)(:)"
+      captures:
+        1: entity.name.tag
+        2: punctuation.separator
+      push:
+        - match: \S+
+          scope: entity.name
+          push:
+            - include: strings
+            - match: $
+              pop: true
+        - match: ^\s*$
+          pop: 2
+
+  strings:
+    - match: '"'
+      scope: punctuation.definition.string.begin
+      push:
+        - meta_scope: string.quoted.double
+        - include: semver
+        - match: '"'
+          scope: punctuation.definition.string.end
+          pop: true
+
+  semver:
+    - match: '(?<="|@)(\^|~?)(?:[\s<>=]*([\d.]+))(?:[\s<>=]*([\d.]+))?(?=")'
+      captures:
+        2: constant.numeric
+        3: constant.numeric
+
+
